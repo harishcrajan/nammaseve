@@ -1,0 +1,69 @@
+{
+  "_note": "Sample routing rules – not official. Contact details are illustrative only.",
+  "agencies": {
+    "BBMP": {
+      "full_name": "Bruhat Bengaluru Mahanagara Palike",
+      "owns": ["roads", "streetlights", "solid_waste", "trees", "stormwater_drains", "footpaths"],
+      "departments": {
+        "roads": "Roads & Infrastructure Department",
+        "streetlights": "Electrical Division",
+        "solid_waste": "Solid Waste Management Department",
+        "trees": "Forest Cell / Horticulture Department",
+        "stormwater_drains": "Storm Water Drain (SWD) Division",
+        "footpaths": "Roads & Infrastructure Department"
+      },
+      "channel": "bbmp.gov.in / Sahaya app / helpline 1533",
+      "helpline": "1533"
+    },
+    "BESCOM": {
+      "full_name": "Bangalore Electricity Supply Company",
+      "owns": ["power_lines", "streetlights_hv", "transformers", "electric_poles"],
+      "departments": {
+        "power_lines": "Field Operations - Distribution",
+        "streetlights_hv": "Street Light Maintenance Division",
+        "transformers": "Maintenance & Operations Division",
+        "electric_poles": "Field Operations - Distribution"
+      },
+      "channel": "bescom.org / helpline 1912",
+      "helpline": "1912"
+    },
+    "BWSSB": {
+      "full_name": "Bangalore Water Supply and Sewerage Board",
+      "owns": ["water_pipes", "water_burst", "sewage", "manholes_sanitary"],
+      "departments": {
+        "water_pipes": "Water Distribution Division",
+        "water_burst": "Water Distribution Division",
+        "sewage": "Sewerage Operations Division",
+        "manholes_sanitary": "Sewerage Operations Division"
+      },
+      "channel": "bwssb.gov.in / helpline 1916",
+      "helpline": "1916"
+    },
+    "Traffic Police": {
+      "full_name": "Bengaluru City Traffic Police",
+      "owns": ["traffic_signals", "road_blocking", "encroachment"],
+      "departments": {
+        "traffic_signals": "Traffic Signal Maintenance Cell",
+        "road_blocking": "Traffic Control Room",
+        "encroachment": "Enforcement Division"
+      },
+      "channel": "TSCOP app / helpline 112",
+      "helpline": "112"
+    }
+  },
+  "issue_to_agency": {
+    "pothole": "BBMP", "damaged_road": "BBMP", "garbage": "BBMP", "streetlight": "BBMP",
+    "power_line": "BESCOM", "dangling_wire": "BESCOM", "transformer": "BESCOM",
+    "water_leak": "BWSSB", "water_burst": "BWSSB", "sewage_overflow": "BWSSB",
+    "open_manhole_sewer": "BWSSB", "open_manhole_stormwater": "BBMP",
+    "fallen_tree": "BBMP", "fallen_tree_on_line": "BESCOM",
+    "road_dug_bwssb": "BWSSB", "road_dug_bescom": "BESCOM",
+    "traffic_signal": "Traffic Police", "road_blocking": "Traffic Police"
+  },
+  "severity_due_days": {"5": 1, "4": 2, "3": 5, "2": 7, "1": 7},
+  "ambiguous_cases": [
+    {"id": "UC6", "description": "Sewage overflow: smell+sewage -> BWSSB; rainwater flooding -> BBMP stormwater."},
+    {"id": "UC7", "description": "Road dug up: primary = agency that dug; BBMP always cc'd."},
+    {"id": "UC8", "description": "Fallen tree: if on power line -> BESCOM primary, BBMP cc'd; else BBMP forest cell."}
+  ]
+}
