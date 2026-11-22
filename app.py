@@ -1,198 +1,240 @@
 """
-app.py - Ward Fixer Streamlit UI
+app.py - NammaSeve (Streamlit UI)
 
 Run: streamlit run app.py
 """
-from datetime import datetime
+import json
+from datetime import datetime, timedelta
+from pathlib import Path
+from urllib.parse import quote
+
 import streamlit as st
+import streamlit.components.v1 as components
 from PIL import Image
 
-from db.database import init_db, get_open_tickets, increment_plus_one, mark_resolved
-from agent.tools import analyze_photo, resolve_ward, find_duplicates, route_agency, draft_complaint, file_and_schedule
+from db.database import init_db, get_open_tickets, mark_sent
+from agent.tools import (run_guided, prefill_from_photo, HAZARDS, TRENCH_OPTIONS, CABLE_WHERE,
+                         CABLE_LIVE, DRAIN_SHAPE, DRAIN_SMELL)
 from agent.escalation import run_escalation
+from agent.llm import ai_enabled
 
 init_db()
 
-st.set_page_config(page_title="Ward Fixer", page_icon="🛠️", layout="centered")
+st.set_page_config(page_title="NammaSeve", page_icon="🛠️", layout="centered")
 
-_LOCALITIES = ["Indiranagar", "Koramangala", "HSR Layout", "Whitefield", "Jayanagar",
-               "Malleshwaram", "Yelahanka", "BTM Layout", "Hebbal", "Electronic City"]
+_DATA = Path(__file__).parent / "data"
+_CONTACTS = json.loads((_DATA / "contacts.json").read_text(encoding="utf-8"))
+_LOCALITIES = json.loads((_DATA / "localities.json").read_text(encoding="utf-8"))["localities"] + ["Other"]
+_ACCENT = "#0f766e"
+_BANNER = "NammaSeve drafts and routes complaints. You send them."
 
-_AGENCY_COLOURS = {"BBMP": "#2563eb", "BESCOM": "#dc2626", "BWSSB": "#16a34a", "Traffic Police": "#7c3aed"}
-_SEVERITY_COLOURS = {5: "#dc2626", 4: "#ea580c", 3: "#d97706", 2: "#2563eb", 1: "#6b7280"}
-_SIM_LABEL = "\u26a0\ufe0f Simulated filing \u2013 sample ward data"
-
-
-def _agency_badge(agency):
-    colour = _AGENCY_COLOURS.get(agency, "#374151")
-    st.markdown(f'<div style="background:{colour};color:#fff;padding:12px 20px;border-radius:8px;font-size:1.3rem;font-weight:700;text-align:center;">{agency}</div>', unsafe_allow_html=True)
-
-
-def _severity_chip(severity):
-    colour = _SEVERITY_COLOURS.get(severity, "#6b7280")
-    label = {5: "EMERGENCY", 4: "HIGH", 3: "MEDIUM", 2: "LOW", 1: "MINOR"}.get(severity, str(severity))
-    return f'<span style="background:{colour};color:#fff;padding:2px 10px;border-radius:12px;font-size:0.8rem;font-weight:600;">Sev {severity} \u2013 {label}</span>'
-
-
-def _stepper(traces):
-    for i, trace in enumerate(traces, 1):
-        step_name = trace.get("step", f"Step {i}").replace("_", " ").title()
-        output = trace.get("output", "")
-        ms = trace.get("duration_ms", 0)
-        with st.expander(f"{i}. {step_name}  \u2014  {output[:80]}", expanded=False):
-            st.caption(f"Input: {trace.get('input_summary', '')}")
-            st.caption(f"Output: {output}")
-            st.caption(f"Duration: {ms} ms")
+st.markdown(f"""
+<style>
+.block-container {{padding-top: 1.2rem; padding-bottom: 2rem; max-width: 880px;}}
+header[data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], footer {{display: none !important;}}
+div[data-testid="stVerticalBlock"] {{gap: 0.6rem;}}
+h1 {{font-size: 2rem; margin-bottom: 0;}}
+h3 {{margin-top: 0; padding-top: 0;}}
+.stApp {{background: #f6f7f9;}}
+div[data-testid="stVerticalBlockBorderWrapper"] {{background: #fff; border-radius: 12px;}}
+@media (max-width: 640px) {{
+  .block-container {{padding: 1rem 0.75rem 3rem 0.75rem;}}
+  h1 {{font-size: 1.6rem !important;}}
+  h3 {{font-size: 1.15rem !important;}}
+}}
+.ns-badge {{background:{_ACCENT};color:#fff;padding:12px 16px;border-radius:8px;font-size:1.2rem;font-weight:700;text-align:center;word-wrap:break-word;}}
+.ns-num {{display:inline-block;background:{_ACCENT};color:#fff;border-radius:50%;width:1.7rem;height:1.7rem;text-align:center;line-height:1.7rem;margin-right:.5rem;font-weight:700;}}
+.ns-danger {{background:#b91c1c;color:#fff;padding:14px 16px;border-radius:8px;font-size:1.15rem;font-weight:700;text-align:center;}}
+.ns-danger a {{color:#fff;text-decoration:underline;}}
+</style>
+""", unsafe_allow_html=True)
 
 
-def tab_report():
-    st.info(_SIM_LABEL)
-    uploaded = st.file_uploader("Photo of the issue (optional)", type=["jpg", "jpeg", "png", "webp"],
-                                help="Leave blank to do a text-only report (UC14)")
-    image = None
-    if uploaded:
-        image = Image.open(uploaded)
-        st.image(image, caption="Uploaded photo", use_container_width=True)
+def _section(num, title):
+    st.markdown(f'<h3 style="font-size:1.25rem;margin:0;padding:0;"><span class="ns-num">{num}</span>{title}</h3>',
+                unsafe_allow_html=True)
 
-    locality = st.selectbox("\ud83d\udccd Locality", _LOCALITIES)
-    description = st.text_area("\ud83d� Description (optional)",
-                               placeholder="e.g. Large pothole near HDFC ATM, vehicles swerving", height=80)
-    if not st.button("\ud83d� Run agent", type="primary", use_container_width=True):
+
+def _contact_for(agency):
+    if "BESCOM" in agency:
+        return _CONTACTS["BESCOM"]
+    if "BWSSB" in agency:
+        return _CONTACTS["BWSSB"]
+    return _CONTACTS["CITY_CORPORATION"]
+
+
+def _mailto(email, subject, body):
+    return f"mailto:{email}?subject={quote(subject)}&body={quote(body)}"
+
+
+def _copy_button(text, key):
+    components.html(f"""
+<button id="b" style="width:100%;padding:8px;border:1px solid {_ACCENT};color:{_ACCENT};background:#fff;border-radius:8px;font-weight:600;cursor:pointer;">Copy</button>
+<script>
+const t = {json.dumps(text)};
+document.getElementById("b").onclick = () => navigator.clipboard.writeText(t).then(() => {{
+  document.getElementById("b").innerText = "Copied";
+}});
+</script>""", height=48)
+
+
+def _send_block(email, subject, body, key):
+    st.code(subject, language=None, wrap_lines=True)
+    st.code(body, language=None, wrap_lines=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.link_button("Open in email app", _mailto(email, subject, body), type="primary", width="stretch")
+    with c2:
+        _copy_button(f"{subject}\n\n{body}", key)
+    st.caption("Attach your photo before sending.")
+
+
+def section_describe():
+    with st.container(border=True):
+        _section(1, "Describe")
+        uploaded = st.file_uploader("Photo of the hazard (optional)", type=["jpg", "jpeg", "png", "webp"])
+        image = Image.open(uploaded) if uploaded else None
+        if image is not None:
+            st.image(image, width="stretch")
+
+        prefill = st.session_state.get("prefill", {})
+        if ai_enabled():
+            if image is not None and st.button("Analyse photo", width="stretch"):
+                st.session_state["prefill"] = prefill = prefill_from_photo(image)
+                st.rerun()
+            if prefill:
+                st.caption("Answers pre-filled from your photo. Correct them if needed.")
+        else:
+            st.info("AI photo analysis is off. Answer 2 quick questions instead.")
+
+        def idx(options, key):
+            return options.index(prefill[key]) if prefill.get(key) in options else 0
+
+        col_h, col_l = st.columns(2)
+        with col_h:
+            answers = {"hazard": st.radio("Hazard type", HAZARDS, index=idx(HAZARDS, "hazard"))}
+        with col_l:
+            locality = st.selectbox("Locality", _LOCALITIES, index=None, placeholder="Type to search…")
+            if locality == "Other":
+                locality = st.text_input("Your locality").strip()
+        landmark = st.text_input("Road or landmark", placeholder="e.g. 12th Main, near the bus stop").strip()
+
+        q1, q2 = st.columns(2)
+        if answers["hazard"] == HAZARDS[0]:
+            opts = list(TRENCH_OPTIONS)
+            with q1:
+                answers["trench"] = st.radio("What can you see in the trench?", opts, index=idx(opts, "trench"))
+        elif answers["hazard"] == HAZARDS[1]:
+            opts = list(CABLE_WHERE)
+            with q1:
+                answers["where"] = st.radio("Where is it?", opts, index=idx(opts, "where"))
+            opts = list(CABLE_LIVE)
+            with q2:
+                answers["live"] = st.radio("Any sparking, burning smell or is it thick and insulated?", opts,
+                                           index=idx(opts, "live"))
+        else:
+            opts = list(DRAIN_SHAPE)
+            with q1:
+                answers["shape"] = st.radio("What does it look like?", opts, index=idx(opts, "shape"))
+            opts = list(DRAIN_SMELL)
+            with q2:
+                answers["smell"] = st.radio("Sewage smell or flow?", opts, index=idx(opts, "smell"))
+
+        if st.button("Find who owns it", type="primary", width="stretch", disabled=not locality):
+            st.session_state["last_result"] = run_guided(answers, locality, landmark)
+            st.rerun()
+
+
+def section_owner(res):
+    with st.container(border=True):
+        _section(2, "Who owns it")
+        if res["outcome"] == "duplicate":
+            dup = res["duplicate"]
+            st.warning(f"You already drafted this hazard here. Added +1 to NammaSeve reference "
+                       f"**{dup['ticket_id']}** (now {dup['plus_one_count']}).")
+            return
+        routing, attribution = res["routing"], res.get("attribution", {})
+        st.markdown(f'<div class="ns-badge">{routing["primary_agency"]}</div>', unsafe_allow_html=True)
+        if routing.get("cc_agencies"):
+            st.caption(f"Copy to: {', '.join(routing['cc_agencies'])}")
+        st.markdown("**Because you reported:** " + "; ".join(res["issue"].get("reported", [])) + ".")
+        if attribution.get("evidence"):
+            st.markdown("**Which points to:**")
+            for e in attribution["evidence"]:
+                st.markdown(f"- {e['label']} → _{', '.join(e['points_to'])}_")
+        for s in attribution.get("suspects", []):
+            st.progress(float(s["confidence"]), text=f"{s['agency']} - {s['confidence']:.0%}")
+        st.markdown(f"**Why:** {routing.get('reason', '')}")
+        with st.expander("Agent trace"):
+            for i, t in enumerate(res["traces"], 1):
+                st.caption(f"{i}. {t['step']} - {t.get('output', '')}")
+
+
+def section_send(res):
+    if res["outcome"] != "filed":
         return
-
-    traces = []
-    hint = f"{uploaded.name} {description}" if uploaded else description
-
-    with st.spinner("Analysing\u2026"):
-        step1 = analyze_photo(image, description)
-        traces.append(step1)
-
-    if not step1.get("is_civic_issue", True):
-        st.warning("\ud83d\udeab This does not appear to be a civic issue. Please describe the problem in a sentence.")
-        _stepper(traces)
-        return
-
-    if float(step1.get("confidence", 1.0)) < 0.6:
-        st.warning(f"\u26a0\ufe0f Low confidence ({step1['confidence']:.0%}). Best guess: **{step1['issue_type']}**. Please confirm or update the description and re-run.")
-        _stepper(traces)
-        return
-
-    with st.spinner("Resolving ward\u2026"):
-        step2 = resolve_ward(locality)
-        traces.append(step2)
-
-    with st.spinner("Checking duplicates\u2026"):
-        step3 = find_duplicates(step1["issue_type"], locality)
-        traces.append(step3)
-
-    if step3.get("duplicate"):
-        dup = step3["duplicate"]
-        increment_plus_one(dup["ticket_id"])
-        st.warning(f"\ud83d� **Duplicate detected.** An open ticket already exists for this issue in {locality}.")
-        c1, c2 = st.columns(2)
-        c1.metric("Ticket ID", dup["ticket_id"])
-        c2.metric("Status", dup["status"])
-        c1.metric("+1 count", dup["plus_one_count"] + 1)
-        c2.metric("Due", dup["due_date"])
-        _stepper(traces)
-        return
-
-    with st.spinner("Routing to agency\u2026"):
-        step4 = route_agency(step1, step2)
-        traces.append(step4)
-
-    with st.spinner("Drafting complaint\u2026"):
-        step5 = draft_complaint(step1, step2, step4)
-        traces.append(step5)
-
-    with st.spinner("Filing ticket\u2026"):
-        step6 = file_and_schedule(step1, step2, step4, step5)
-        traces.append(step6)
-
-    st.markdown("---")
-    st.subheader("\ud83d� Agent steps")
-    _stepper(traces)
-
-    st.markdown("---")
-    st.subheader("\ud83c� Responsible Agency")
-    _agency_badge(step4.get("primary_agency", "BBMP"))
-    if step4.get("helpline"):
-        st.markdown(f"**Helpline: \ud83d� {step4['helpline']}**")
-    if step4.get("cc_agencies"):
-        st.caption(f"CC: {', '.join(step4['cc_agencies'])}")
-    st.caption(f"Reason: {step4.get('reason', '')}")
-
-    if int(step1.get("severity", 3)) == 5:
-        st.error(f"\ud83d� **EMERGENCY \u2013 Severity 5** | Call **{step4.get('helpline')}** immediately! Keep bystanders at least 10 metres away.")
-
-    st.markdown("---")
-    st.subheader("\ud83d� Drafted Complaints")
-    col_en, col_kn = st.columns(2)
-    with col_en:
-        st.markdown("**English**")
-        st.text_area("Subject (EN)", value=step5.get("subject", ""), height=50, key="subj_en")
-        st.text_area("Body (EN)", value=step5.get("body_en", ""), height=250, key="body_en")
-    with col_kn:
-        st.markdown("**Kannada**")
-        st.text_area("Subject (KN)", value=step5.get("subject", ""), height=50, key="subj_kn")
-        st.text_area("Body (KN)", value=step5.get("body_kn", ""), height=250, key="body_kn")
-
-    st.markdown("---")
-    st.success(f"\u2705 Ticket filed: **{step6.get('ticket_id')}**  |  Due by: **{step6.get('due_date')}**")
-    st.caption(_SIM_LABEL)
+    routing, complaint, filing = res["routing"], res["complaint"], res["filing"]
+    contact = _contact_for(routing["primary_agency"])
+    with st.container(border=True):
+        _section(3, "Send")
+        st.markdown("**Ready to send**")
+        st.markdown(f"**To:** {contact['email']}  \n**Helpline:** [{contact['helpline']}](tel:{contact['helpline']})"
+                    f"  \n**WhatsApp:** [{contact['whatsapp']}](https://wa.me/91{contact['whatsapp']})")
+        st.caption("Published contact. Verify before sending.")
+        tab_en, tab_kn = st.tabs(["English", "ಕನ್ನಡ"])
+        with tab_en:
+            _send_block(contact["email"], complaint["subject"], complaint["body_en"], "en")
+        with tab_kn:
+            _send_block(contact["email"], complaint["subject_kn"], complaint["body_kn"], "kn")
+        st.caption(f"NammaSeve reference: {filing['ticket_id']} (local only)")
 
 
-def tab_tickets():
-    st.info(_SIM_LABEL)
+def section_complaints():
     tickets = get_open_tickets()
     if not tickets:
-        st.info("No tickets yet. Report an issue in the first tab.")
         return
-
-    st.subheader("\u23e9 Escalation simulator")
-    if st.button("Simulate +7 days (run escalation agent)", use_container_width=True):
-        from datetime import timedelta
-        future = datetime.utcnow() + timedelta(days=7)
-        esc_traces = run_escalation(future)
-        if not esc_traces:
-            st.info("No tickets were overdue in the simulated future.")
-        else:
-            st.success(f"Escalated {len(esc_traces)} ticket(s).")
-            for t in esc_traces:
-                with st.expander(f"Ticket {t['ticket_id']} \u2192 Level {t['escalation_level']} ({t['officer']})", expanded=True):
-                    st.caption(t["output"])
-                    st.text_area("Escalation message", value=t["escalation_message"], height=200, key=f"esc_{t['ticket_id']}")
-        st.rerun()
-
-    st.markdown("---")
-    st.subheader("\ud83c�\ufe0f All tickets")
-    for ticket in get_open_tickets():
-        sev = int(ticket.get("severity", 3))
+    st.subheader("Your complaints")
+    for t in tickets:
         with st.container(border=True):
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.markdown(
-                    f"**{ticket.get('ticket_id')}** &nbsp; "
-                    + _severity_chip(sev)
-                    + f"&nbsp; <span style='font-size:0.85rem'>{ticket.get('issue_type','').replace('_',' ').title()} \u00b7 {ticket.get('locality','')}</span>",
-                    unsafe_allow_html=True,
-                )
-                st.caption(f"Agency: **{ticket.get('primary_agency','')}** \u00b7 Status: **{ticket.get('status','')}** \u00b7 +1: **{ticket.get('plus_one_count',0)}** \u00b7 Due: **{ticket.get('due_date','')}** \u00b7 Escalation: **{ticket.get('escalation_level',0)}**")
-                if ticket.get("escalation_msg"):
-                    with st.expander("Escalation message"):
-                        st.text(ticket["escalation_msg"])
-            with col2:
-                if ticket.get("status") != "Resolved":
-                    if st.button("\u2705 Resolve", key=f"res_{ticket['ticket_id']}"):
-                        mark_resolved(ticket["ticket_id"])
-                        st.rerun()
-                else:
-                    st.caption("\u2705 Resolved")
-    st.caption(_SIM_LABEL)
+            st.markdown(f"**{t.get('subject') or t['issue_type']}**")
+            st.caption(f"NammaSeve reference {t['ticket_id']} (local only) · To: {t['primary_agency']}"
+                       f" · Status: **{t['status']}** · +1: {t.get('plus_one_count', 0)}")
+            if t["status"] == "Draft ready":
+                if st.button("I have sent it", key=f"sent_{t['ticket_id']}"):
+                    mark_sent(t["ticket_id"])
+                    st.rerun()
+
+    with st.container(border=True):
+        st.markdown("#### Follow-up")
+        if st.button("Draft follow-up (demo: skip 7 days)", width="stretch"):
+            st.session_state["followups"] = run_escalation(datetime.now() + timedelta(days=7))
+            st.rerun()
+        followups = st.session_state.get("followups")
+        if followups is not None:
+            if not followups:
+                st.info("No complaints marked \"Sent by you\" yet. Press \"I have sent it\" after sending.")
+            for f in followups:
+                ticket = next((t for t in tickets if t["ticket_id"] == f["ticket_id"]), {})
+                email = _contact_for(ticket.get("primary_agency", ""))["email"]
+                st.markdown(f"**{f['ticket_id']}** - follow-up to {f['officer']} (sent {f['sent_on']})")
+                st.code(f["subject"], language=None, wrap_lines=True)
+                st.code(f["escalation_message"], language=None, wrap_lines=True)
+                st.link_button("Open in email app", _mailto(email, f["subject"], f["escalation_message"]),
+                               key=f"fu_{f['ticket_id']}")
 
 
-tab1, tab2 = st.tabs(["\ud83d� Report an issue", "\ud83c�\ufe0f My tickets"])
-with tab1:
-    tab_report()
-with tab2:
-    tab_tickets()
+res = st.session_state.get("last_result")
+if res and res["outcome"] == "filed" and res["routing"].get("safety_banner"):
+    st.markdown('<div class="ns-danger">Keep away. Call BESCOM 1912 now. '
+                '<a href="tel:1912">Tap to call 1912</a></div>', unsafe_allow_html=True)
+
+st.title("NammaSeve")
+st.caption("Find who owns a civic hazard in Bengaluru, and send them a complaint that sticks.")
+st.info(_BANNER)
+
+section_describe()
+res = st.session_state.get("last_result")
+if res:
+    section_owner(res)
+    section_send(res)
+section_complaints()

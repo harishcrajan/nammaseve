@@ -1,15 +1,17 @@
 {
-  "_note": "Sample data – not official. Ward names and zones are illustrative only.",
+  "_note": "Sample data – not official. Ward names are illustrative; corporations follow the five city corporations under the Greater Bengaluru Authority.",
   "localities": [
-    {"locality": "Indiranagar", "ward": "Indiranagar Ward 81", "zone": "East Zone", "corporation": "BBMP"},
-    {"locality": "Koramangala", "ward": "Koramangala Ward 68", "zone": "South Zone", "corporation": "BBMP"},
-    {"locality": "HSR Layout", "ward": "HSR Layout Ward 174", "zone": "South Zone", "corporation": "BBMP"},
-    {"locality": "Whitefield", "ward": "Whitefield Ward 149", "zone": "East Zone", "corporation": "BBMP"},
-    {"locality": "Jayanagar", "ward": "Jayanagar Ward 55", "zone": "South Zone", "corporation": "BBMP"},
-    {"locality": "Malleshwaram", "ward": "Malleshwaram Ward 28", "zone": "West Zone", "corporation": "BBMP"},
-    {"locality": "Yelahanka", "ward": "Yelahanka Ward 3", "zone": "North Zone", "corporation": "BBMP"},
-    {"locality": "BTM Layout", "ward": "BTM Layout Ward 157", "zone": "South Zone", "corporation": "BBMP"},
-    {"locality": "Hebbal", "ward": "Hebbal Ward 16", "zone": "North Zone", "corporation": "BBMP"},
-    {"locality": "Electronic City", "ward": "Electronic City Ward 193", "zone": "South Zone", "corporation": "BBMP"}
+    {"locality": "Indiranagar", "ward": "Indiranagar Ward 81", "zone": "East", "corporation": "Bengaluru East City Corporation"},
+    {"locality": "Whitefield", "ward": "Whitefield Ward 149", "zone": "East", "corporation": "Bengaluru East City Corporation"},
+    {"locality": "Koramangala", "ward": "Koramangala Ward 68", "zone": "South", "corporation": "Bengaluru South City Corporation"},
+    {"locality": "HSR Layout", "ward": "HSR Layout Ward 174", "zone": "South", "corporation": "Bengaluru South City Corporation"},
+    {"locality": "Jayanagar", "ward": "Jayanagar Ward 55", "zone": "South", "corporation": "Bengaluru South City Corporation"},
+    {"locality": "BTM Layout", "ward": "BTM Layout Ward 157", "zone": "South", "corporation": "Bengaluru South City Corporation"},
+    {"locality": "Malleshwaram", "ward": "Malleshwaram Ward 28", "zone": "West", "corporation": "Bengaluru West City Corporation"},
+    {"locality": "Rajajinagar", "ward": "Rajajinagar Ward 99", "zone": "West", "corporation": "Bengaluru West City Corporation"},
+    {"locality": "Yelahanka", "ward": "Yelahanka Ward 3", "zone": "North", "corporation": "Bengaluru North City Corporation"},
+    {"locality": "Hebbal", "ward": "Hebbal Ward 16", "zone": "North", "corporation": "Bengaluru North City Corporation"},
+    {"locality": "Shivajinagar", "ward": "Shivajinagar Ward 92", "zone": "Central", "corporation": "Bengaluru Central City Corporation"},
+    {"locality": "Gandhinagar", "ward": "Gandhinagar Ward 94", "zone": "Central", "corporation": "Bengaluru Central City Corporation"}
   ]
 }

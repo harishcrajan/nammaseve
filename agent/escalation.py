@@ -1,5 +1,5 @@
 """
-agent/escalation.py - Autonomous escalation agent for Ward Fixer.
+agent/escalation.py - Follow-up drafting agent for NammaSeve.
 
 Escalation levels:
   0 -> Ward Engineer
@@ -23,7 +23,7 @@ def _next_escalation_level(level: int) -> tuple[str, str]:
     return _LEVEL_TARGETS[next_level]
 
 
-def _draft_escalation_message(ticket: dict, days_overdue: int, next_level: int) -> str:
+def _draft_escalation_message(ticket: dict, days_overdue: int, next_level: int, sent_on: str = "") -> str:
     officer, channel = _LEVEL_TARGETS[next_level]
     tid = ticket.get("ticket_id", "UNKNOWN")
     issue = ticket.get("issue_type", "civic issue").replace("_", " ")
@@ -33,72 +33,57 @@ def _draft_escalation_message(ticket: dict, days_overdue: int, next_level: int) 
     if next_level < 2:
         return (
             f"Dear {officer},\n\n"
-            f"This is a formal escalation regarding Ticket {tid}.\n\n"
+            f"I am following up on my complaint sent on {sent_on} (NammaSeve reference {tid}).\n\n"
             f"Issue: {issue.title()} at {locality}\n"
-            f"Filed with: {agency}\n"
-            f"Status: Overdue by {days_overdue} day(s) - no resolution received.\n\n"
+            f"Originally sent to: {agency}\n"
+            f"Status: {days_overdue} day(s) since sending - the hazard is still unresolved.\n\n"
             f"As the matter has not been addressed within the stipulated timeline, "
-            f"we are escalating to your office. Please ensure immediate action is taken "
+            f"I am escalating to your office. Please ensure immediate action is taken "
             f"and an update is provided within 48 hours.\n\n"
-            f"Reference: Ticket {tid} filed on Ward Fixer civic complaint platform.\n\n"
-            f"Regards,\nWard Fixer Escalation System"
+            f"Reference: NammaSeve reference {tid}, original complaint sent on {sent_on}.\n\n"
+            f"Regards,\nConcerned Resident, {locality}"
         )
     else:
         return (
             f"UNRESOLVED CIVIC COMPLAINT - {locality.upper()}\n\n"
-            f"Ticket {tid}: {issue.title()}\n"
-            f"Filed with {agency} - {days_overdue} days overdue - No response received.\n\n"
-            f"We have escalated through the Ward Engineer and Zonal Commissioner "
+            f"NammaSeve reference {tid}: {issue.title()}\n"
+            f"Sent to {agency} on {sent_on} - {days_overdue} days, still unresolved.\n\n"
+            f"I have followed up through the Ward Engineer and Zonal Commissioner "
             f"without resolution. Posting publicly to request action from "
-            f"@{agency.replace(' ', '')} and @BBMPBengaluru.\n\n"
+            f"{agency} and the Greater Bengaluru Authority.\n\n"
             f"Please contact {agency} helpline or file your own complaint to add weight.\n"
-            f"#BengaluruCivicIssues #WardFixer #{locality.replace(' ', '')}"
+            f"#BengaluruCivicIssues #NammaSeve #{locality.replace(' ', '')}"
         )
 
 
 def run_escalation(now: datetime) -> list[dict]:
-    """Find all overdue tickets, raise escalation level, draft message."""
-    today = now.strftime("%Y-%m-%d")
-    all_tickets = get_open_tickets()
+    """Draft a follow-up for every ticket the resident has sent, at least 7 days after sending."""
     traces = []
-
-    for ticket in all_tickets:
-        if ticket.get("status") in ("Resolved",):
+    for ticket in get_open_tickets():
+        status = ticket.get("status", "")
+        if not status.startswith("Sent by you on "):
             continue
-        due_date_str = ticket.get("due_date", "")
-        if not due_date_str or due_date_str >= today:
+        sent_on = status.replace("Sent by you on ", "")
+        days_since = (now - datetime.strptime(sent_on, "%Y-%m-%d")).days
+        if days_since < 7:
             continue
-
-        due_date = datetime.strptime(due_date_str, "%Y-%m-%d")
-        days_overdue = (now - due_date).days
         current_level = int(ticket.get("escalation_level", 0))
         next_level = min(current_level + 1, 2)
-
-        msg = _draft_escalation_message(ticket, days_overdue, next_level)
-        extra_days = _ESCALATION_DUE_DAYS.get(next_level, 7)
-        new_due = (now + timedelta(days=extra_days)).strftime("%Y-%m-%d")
-
-        update_ticket(
-            ticket["ticket_id"],
-            escalation_level=next_level,
-            due_date=new_due,
-            escalation_msg=msg,
-            status="Escalated",
-        )
-
+        msg = _draft_escalation_message(ticket, days_since, next_level, sent_on)
+        update_ticket(ticket["ticket_id"], escalation_level=next_level, escalation_msg=msg)
         officer, channel = _LEVEL_TARGETS[next_level]
         traces.append({
             "step": "escalation",
             "ticket_id": ticket["ticket_id"],
-            "input_summary": f"ticket={ticket['ticket_id']}, days_overdue={days_overdue}, prev_level={current_level}",
-            "output": f"Escalated to level {next_level} ({officer}), new due={new_due}",
+            "input_summary": f"reference={ticket['ticket_id']}, sent={sent_on}, days_since={days_since}",
+            "output": f"Follow-up drafted for level {next_level} ({officer})",
             "duration_ms": 0,
             "escalation_level": next_level,
             "officer": officer,
             "channel": channel,
-            "new_due_date": new_due,
-            "days_overdue": days_overdue,
+            "days_overdue": days_since,
+            "sent_on": sent_on,
+            "subject": f"Follow-up: NammaSeve reference {ticket['ticket_id']} (sent {sent_on})",
             "escalation_message": msg,
         })
-
     return traces

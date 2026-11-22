@@ -1,0 +1,197 @@
+{
+  "_note": "Sample road-cutting permits – not official. Used by check_permit. No TELECOM or GAIL permits are on record (demo of a possible unauthorised cut).",
+  "permits": [
+    {
+      "permit_id": "GBA-RC-2026-0101",
+      "agency": "BWSSB",
+      "locality": "Indiranagar",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0102",
+      "agency": "BWSSB",
+      "locality": "Whitefield",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0103",
+      "agency": "BWSSB",
+      "locality": "Koramangala",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0104",
+      "agency": "BWSSB",
+      "locality": "HSR Layout",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0105",
+      "agency": "BWSSB",
+      "locality": "Jayanagar",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0106",
+      "agency": "BWSSB",
+      "locality": "BTM Layout",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0107",
+      "agency": "BWSSB",
+      "locality": "Malleshwaram",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0108",
+      "agency": "BWSSB",
+      "locality": "Rajajinagar",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0109",
+      "agency": "BWSSB",
+      "locality": "Yelahanka",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0110",
+      "agency": "BWSSB",
+      "locality": "Hebbal",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0111",
+      "agency": "BWSSB",
+      "locality": "Shivajinagar",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0112",
+      "agency": "BWSSB",
+      "locality": "Gandhinagar",
+      "purpose": "Water main replacement",
+      "issued": "2026-08-20",
+      "restore_by": "2026-10-15"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0301",
+      "agency": "BESCOM",
+      "locality": "Indiranagar",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0302",
+      "agency": "BESCOM",
+      "locality": "Whitefield",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0303",
+      "agency": "BESCOM",
+      "locality": "Koramangala",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0304",
+      "agency": "BESCOM",
+      "locality": "HSR Layout",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0305",
+      "agency": "BESCOM",
+      "locality": "Jayanagar",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0306",
+      "agency": "BESCOM",
+      "locality": "BTM Layout",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0307",
+      "agency": "BESCOM",
+      "locality": "Malleshwaram",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0308",
+      "agency": "BESCOM",
+      "locality": "Rajajinagar",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0309",
+      "agency": "BESCOM",
+      "locality": "Yelahanka",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0310",
+      "agency": "BESCOM",
+      "locality": "Hebbal",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0311",
+      "agency": "BESCOM",
+      "locality": "Shivajinagar",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    },
+    {
+      "permit_id": "GBA-RC-2026-0312",
+      "agency": "BESCOM",
+      "locality": "Gandhinagar",
+      "purpose": "Underground HT cable laying",
+      "issued": "2026-11-01",
+      "restore_by": "2027-01-31"
+    }
+  ]
+}

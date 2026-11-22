@@ -1,0 +1,191 @@
+{
+  "_note": "Sample attribution clues – not official. Weights are illustrative heuristics used by attribute_owner.",
+  "suspects": {
+    "BWSSB": {
+      "name": "BWSSB",
+      "full_name": "Bangalore Water Supply and Sewerage Board",
+      "helpline": "1916",
+      "channel": "bwssb.gov.in / helpline 1916"
+    },
+    "BESCOM": {
+      "name": "BESCOM",
+      "full_name": "Bangalore Electricity Supply Company",
+      "helpline": "1912",
+      "channel": "bescom.org / helpline 1912"
+    },
+    "TELECOM": {
+      "name": "Telecom operator (OFC)",
+      "full_name": "Optical fibre cable operator",
+      "helpline": "",
+      "channel": "via city corporation OFC cell"
+    },
+    "GAIL": {
+      "name": "GAIL Gas",
+      "full_name": "City gas distribution operator",
+      "helpline": "",
+      "channel": "operator emergency line"
+    },
+    "CITY_CORP": {
+      "name": "City Corporation",
+      "full_name": "Ward's city corporation (Greater Bengaluru Authority)",
+      "helpline": "1533",
+      "channel": "corporation helpline 1533"
+    },
+    "METRO": {
+      "name": "BMRCL (Namma Metro)",
+      "full_name": "Bangalore Metro Rail Corporation",
+      "helpline": "",
+      "channel": "via city corporation"
+    }
+  },
+  "clues": {
+    "blue_hdpe_pipe": {
+      "label": "Blue HDPE water pipe exposed in trench",
+      "family": "ROAD_CUT",
+      "points_to": {
+        "BWSSB": 0.7
+      }
+    },
+    "water_pooling_in_trench": {
+      "label": "Clean water pooling in the trench",
+      "family": "ROAD_CUT",
+      "points_to": {
+        "BWSSB": 0.3,
+        "CITY_CORP": 0.1
+      }
+    },
+    "bwssb_stencil_barricade": {
+      "label": "Barricade stencilled with a BWSSB contractor name",
+      "family": "ROAD_CUT",
+      "points_to": {
+        "BWSSB": 0.6
+      }
+    },
+    "orange_duct_bundle": {
+      "label": "Orange/black HDPE duct bundle (fibre ducts)",
+      "family": "ROAD_CUT",
+      "points_to": {
+        "TELECOM": 0.6,
+        "BESCOM": 0.15
+      }
+    },
+    "coiled_fibre_cable": {
+      "label": "Coiled thin fibre cable left at the trench",
+      "family": "ROAD_CUT",
+      "points_to": {
+        "TELECOM": 0.5
+      }
+    },
+    "no_barricade_or_board": {
+      "label": "No barricade or work board showing a permit number",
+      "family": "ROAD_CUT",
+      "points_to": {}
+    },
+    "red_warning_tiles": {
+      "label": "Red warning tiles over a thick armoured cable",
+      "family": "ROAD_CUT",
+      "points_to": {
+        "BESCOM": 0.7
+      }
+    },
+    "yellow_gas_pipe": {
+      "label": "Yellow MDPE gas pipe",
+      "family": "ROAD_CUT",
+      "points_to": {
+        "GAIL": 0.8
+      }
+    },
+    "thick_insulated_cable": {
+      "label": "Thick insulated cable (power gauge)",
+      "family": "CABLE",
+      "points_to": {
+        "BESCOM": 0.6
+      }
+    },
+    "pole_transformer_nearby": {
+      "label": "Pole-mounted transformer nearby",
+      "family": "CABLE",
+      "points_to": {
+        "BESCOM": 0.4
+      }
+    },
+    "thin_black_cable_bundle": {
+      "label": "Bundle of thin black cables",
+      "family": "CABLE",
+      "points_to": {
+        "TELECOM": 0.5
+      }
+    },
+    "telecom_junction_box": {
+      "label": "Small junction box with operator tag",
+      "family": "CABLE",
+      "points_to": {
+        "TELECOM": 0.5
+      }
+    },
+    "streetlight_pole_cable": {
+      "label": "Cable hanging from a streetlight pole junction",
+      "family": "CABLE",
+      "points_to": {
+        "CITY_CORP": 0.7
+      }
+    },
+    "round_manhole_frame": {
+      "label": "Round cast-iron manhole frame",
+      "family": "OPEN_DRAIN",
+      "points_to": {
+        "BWSSB": 0.4
+      }
+    },
+    "grey_black_sewage": {
+      "label": "Grey-black sewage water",
+      "family": "OPEN_DRAIN",
+      "points_to": {
+        "BWSSB": 0.6
+      }
+    },
+    "sewage_smell": {
+      "label": "Sewage smell reported",
+      "family": "OPEN_DRAIN",
+      "points_to": {
+        "BWSSB": 0.4
+      }
+    },
+    "broken_rectangular_slab": {
+      "label": "Broken rectangular drain slab",
+      "family": "OPEN_DRAIN",
+      "points_to": {
+        "CITY_CORP": 0.5
+      }
+    },
+    "roadside_channel": {
+      "label": "Open roadside channel",
+      "family": "OPEN_DRAIN",
+      "points_to": {
+        "CITY_CORP": 0.5
+      }
+    },
+    "rainwater_and_silt": {
+      "label": "Rainwater and silt in channel",
+      "family": "OPEN_DRAIN",
+      "points_to": {
+        "CITY_CORP": 0.4
+      }
+    },
+    "metro_barricades": {
+      "label": "Metro project barricades",
+      "family": "ROAD_CUT",
+      "points_to": {
+        "METRO": 0.8
+      }
+    },
+    "cable_on_footpath": {
+      "label": "Cable lying on the footpath",
+      "family": "CABLE",
+      "points_to": {
+        "BESCOM": 0.3,
+        "TELECOM": 0.2
+      }
+    }
+  }
+}

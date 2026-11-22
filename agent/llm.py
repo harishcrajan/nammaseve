@@ -1,8 +1,9 @@
 """
 agent/llm.py - LLM abstraction for Ward Fixer.
 
-MOCK_MODE=true (default): returns realistic canned JSON keyed on
-keywords found in image filename or text.
+MOCK_MODE=true (default): returns canned JSON chosen by keywords in the
+image filename or text: roadcut_overdue, roadcut_nopermit, livewire,
+telecom, sewer, stormdrain (plus a few single-owner extras).
 
 MOCK_MODE=false: calls IBM watsonx.ai via ibm-watsonx-ai SDK.
   Required env vars: WATSONX_APIKEY, WATSONX_PROJECT_ID, WATSONX_URL,
@@ -20,59 +21,59 @@ load_dotenv()
 MOCK_MODE = os.environ.get("MOCK_MODE", "true").lower() not in ("false", "0", "no")
 
 _MOCK_ANALYZE: dict[str, dict] = {
-    "pothole": {"issue_type": "pothole", "severity": 3, "description": "Large pothole approximately 60 cm wide and 15 cm deep on the carriageway.", "confidence": 0.92, "is_civic_issue": True},
-    "damaged_road": {"issue_type": "damaged_road", "severity": 3, "description": "Road surface severely damaged with multiple cracks and depressions.", "confidence": 0.88, "is_civic_issue": True},
-    "garbage": {"issue_type": "garbage", "severity": 2, "description": "Unsegregated garbage pile accumulated near a residential gate, possible black spot.", "confidence": 0.95, "is_civic_issue": True},
-    "waste": {"issue_type": "garbage", "severity": 2, "description": "Waste dumped on public road, creating a sanitation hazard.", "confidence": 0.90, "is_civic_issue": True},
-    "streetlight": {"issue_type": "streetlight", "severity": 2, "description": "Streetlight column present but not illuminated; surrounding area dark at night.", "confidence": 0.91, "is_civic_issue": True},
-    "light": {"issue_type": "streetlight", "severity": 2, "description": "Street light not functioning.", "confidence": 0.87, "is_civic_issue": True},
-    "wire": {"issue_type": "dangling_wire", "severity": 5, "description": "Snapped power line hanging low over the road, posing immediate electrocution risk.", "confidence": 0.97, "is_civic_issue": True},
-    "power": {"issue_type": "dangling_wire", "severity": 5, "description": "Live electrical wire dangling at head height - emergency hazard.", "confidence": 0.94, "is_civic_issue": True},
-    "sparking": {"issue_type": "transformer", "severity": 5, "description": "Transformer sparking and emitting smoke near a residential colony.", "confidence": 0.96, "is_civic_issue": True},
-    "transformer": {"issue_type": "transformer", "severity": 5, "description": "Overloaded transformer showing signs of failure - risk of fire.", "confidence": 0.93, "is_civic_issue": True},
-    "leak": {"issue_type": "water_leak", "severity": 3, "description": "Continuous water leak from an underground pipe visible at road surface.", "confidence": 0.90, "is_civic_issue": True},
-    "pipe": {"issue_type": "water_leak", "severity": 3, "description": "Broken water pipe causing flooding on the footpath.", "confidence": 0.88, "is_civic_issue": True},
-    "burst": {"issue_type": "water_burst", "severity": 4, "description": "Water main burst - high-pressure water flooding the road.", "confidence": 0.94, "is_civic_issue": True},
-    "manhole": {"issue_type": "sewage_overflow", "severity": 4, "description": "Open manhole with sewage overflow creating a public health hazard.", "confidence": 0.89, "is_civic_issue": True},
-    "sewage": {"issue_type": "sewage_overflow", "severity": 4, "description": "Sewage overflowing from drain onto road surface.", "confidence": 0.92, "is_civic_issue": True},
-    "tree": {"issue_type": "fallen_tree", "severity": 3, "description": "Large tree has fallen across the road, obstructing traffic.", "confidence": 0.93, "is_civic_issue": True},
-    "branch": {"issue_type": "fallen_tree", "severity": 3, "description": "Heavy tree branch fallen on the footpath.", "confidence": 0.88, "is_civic_issue": True},
-    "signal": {"issue_type": "traffic_signal", "severity": 3, "description": "Traffic signal not functioning at the intersection.", "confidence": 0.91, "is_civic_issue": True},
-    "traffic": {"issue_type": "traffic_signal", "severity": 3, "description": "Traffic light out of order, causing congestion.", "confidence": 0.87, "is_civic_issue": True},
-    "blocking": {"issue_type": "road_blocking", "severity": 3, "description": "Vehicles illegally parked blocking the road.", "confidence": 0.85, "is_civic_issue": True},
-    "dug": {"issue_type": "road_dug_bwssb", "severity": 3, "description": "Road dug up for pipe-laying work and left unrestored.", "confidence": 0.87, "is_civic_issue": True},
-    "not_civic": {"issue_type": "unknown", "severity": 1, "description": "Image does not appear to show a civic infrastructure issue.", "confidence": 0.85, "is_civic_issue": False},
-    "unclear": {"issue_type": "unclear", "severity": 1, "description": "Image is blurry or unclear; cannot determine the issue.", "confidence": 0.3, "is_civic_issue": False},
+    # Orphan-hazard families (demo filenames)
+    "roadcut_overdue": {"family": "ROAD_CUT", "sub_type": "TRENCH_PIPE", "severity": 3, "confidence": 0.90, "is_civic_issue": True,
+                        "description": "Trench about 1.5 m wide cut across the carriageway with a blue pipe exposed; loose soil left on the road and no restoration.",
+                        "visual_clues": ["blue_hdpe_pipe", "water_pooling_in_trench", "bwssb_stencil_barricade"]},
+    "roadcut_nopermit": {"family": "ROAD_CUT", "sub_type": "TRENCH_DUCT", "severity": 3, "confidence": 0.88, "is_civic_issue": True,
+                         "description": "Narrow trench along the road edge with orange duct bundles and coiled thin cable; no barricade or work board.",
+                         "visual_clues": ["orange_duct_bundle", "coiled_fibre_cable", "no_barricade_or_board"]},
+    "livewire": {"family": "CABLE", "sub_type": "LIVE_POWER", "severity": 5, "confidence": 0.93, "is_civic_issue": True,
+                 "description": "Thick insulated cable hanging at head height from a pole close to a transformer.",
+                 "visual_clues": ["thick_insulated_cable", "pole_transformer_nearby"]},
+    "telecom": {"family": "CABLE", "sub_type": "TELECOM_OFC", "severity": 2, "confidence": 0.90, "is_civic_issue": True,
+                "description": "Bundle of thin black cables sagging low between poles, small junction box with an operator tag.",
+                "visual_clues": ["thin_black_cable_bundle", "telecom_junction_box"]},
+    "streetlight": {"family": "CABLE", "sub_type": "STREETLIGHT", "severity": 3, "confidence": 0.86, "is_civic_issue": True,
+                    "description": "Streetlight feeder cable hanging loose from the lamp post junction door.",
+                    "visual_clues": ["streetlight_pole_cable"]},
+    "cable": {"family": "CABLE", "sub_type": "UNSURE", "severity": 4, "confidence": 0.70, "is_civic_issue": True,
+              "description": "Cable hanging low over the footpath; type of cable cannot be confirmed from the photo.",
+              "visual_clues": ["thin_black_cable_bundle", "thick_insulated_cable"]},
+    "sewer": {"family": "OPEN_DRAIN", "sub_type": "SEWER", "severity": 4, "confidence": 0.89, "is_civic_issue": True,
+              "description": "Open round manhole with grey-black water close to the surface.",
+              "visual_clues": ["round_manhole_frame", "grey_black_sewage", "sewage_smell"]},
+    "stormdrain": {"family": "OPEN_DRAIN", "sub_type": "STORM", "severity": 4, "confidence": 0.90, "is_civic_issue": True,
+                   "description": "Broken slab over a roadside channel exposing a deep open drain with rainwater and silt.",
+                   "visual_clues": ["broken_rectangular_slab", "roadside_channel", "rainwater_and_silt"]},
+    "drain_mixed": {"family": "OPEN_DRAIN", "sub_type": "UNSURE", "severity": 4, "confidence": 0.80, "is_civic_issue": True,
+                    "description": "Open roadside channel with a broken slab and grey-black sewage flowing in it.",
+                    "visual_clues": ["roadside_channel", "broken_rectangular_slab", "grey_black_sewage", "sewage_smell"]},
+    # Single-owner path
+    "pothole": {"family": "OTHER", "issue_type": "pothole", "severity": 3, "description": "Large pothole approximately 60 cm wide and 15 cm deep on the carriageway.", "confidence": 0.92, "is_civic_issue": True},
+    "garbage": {"family": "OTHER", "issue_type": "garbage", "severity": 2, "description": "Unsegregated garbage pile accumulated near a residential gate, possible black spot.", "confidence": 0.95, "is_civic_issue": True},
+    "tree": {"family": "OTHER", "issue_type": "fallen_tree", "severity": 3, "description": "Large tree has fallen across the road, obstructing traffic.", "confidence": 0.93, "is_civic_issue": True},
+    "signal": {"family": "OTHER", "issue_type": "traffic_signal", "severity": 3, "description": "Traffic signal not functioning at the intersection.", "confidence": 0.91, "is_civic_issue": True},
+    "not_civic": {"family": "OTHER", "issue_type": "unknown", "severity": 1, "description": "Image does not appear to show a civic infrastructure issue.", "confidence": 0.85, "is_civic_issue": False},
+    "unclear": {"family": "OTHER", "issue_type": "unclear", "severity": 1, "description": "Image is blurry or unclear; cannot determine the issue.", "confidence": 0.3, "is_civic_issue": False},
 }
 
+# Single-owner routes. "City Corporation" is replaced with the ward's corporation by route_agency.
 _MOCK_ROUTE: dict[str, dict] = {
-    "pothole": {"primary_agency": "BBMP", "cc_agencies": [], "department": "Roads & Infrastructure Department", "channel": "bbmp.gov.in / helpline 1533", "helpline": "1533", "reason": "Potholes and road surface damage are the responsibility of BBMP Roads & Infrastructure Department."},
-    "damaged_road": {"primary_agency": "BBMP", "cc_agencies": [], "department": "Roads & Infrastructure Department", "channel": "bbmp.gov.in / helpline 1533", "helpline": "1533", "reason": "Road surface damage falls under BBMP Roads & Infrastructure Department."},
-    "garbage": {"primary_agency": "BBMP", "cc_agencies": [], "department": "Solid Waste Management Department", "channel": "bbmp.gov.in / helpline 1533", "helpline": "1533", "reason": "Garbage collection and disposal on public roads is managed by BBMP Solid Waste Management."},
-    "streetlight": {"primary_agency": "BBMP", "cc_agencies": [], "department": "Electrical Division", "channel": "bbmp.gov.in / helpline 1533", "helpline": "1533", "reason": "Street lighting infrastructure within ward limits is maintained by BBMP Electrical Division."},
-    "dangling_wire": {"primary_agency": "BESCOM", "cc_agencies": [], "department": "Field Operations - Distribution", "channel": "bescom.org / helpline 1912", "helpline": "1912", "reason": "Snapped or dangling power lines are an immediate BESCOM emergency requiring urgent field response."},
-    "transformer": {"primary_agency": "BESCOM", "cc_agencies": [], "department": "Maintenance & Operations Division", "channel": "bescom.org / helpline 1912", "helpline": "1912", "reason": "Transformer faults are managed by BESCOM Maintenance & Operations Division."},
-    "water_leak": {"primary_agency": "BWSSB", "cc_agencies": [], "department": "Water Distribution Division", "channel": "bwssb.gov.in / helpline 1916", "helpline": "1916", "reason": "Water pipe leaks on public roads are the responsibility of BWSSB Water Distribution Division."},
-    "water_burst": {"primary_agency": "BWSSB", "cc_agencies": [], "department": "Water Distribution Division", "channel": "bwssb.gov.in / helpline 1916", "helpline": "1916", "reason": "Burst water mains are an urgent BWSSB Water Distribution emergency."},
-    "sewage_overflow": {"primary_agency": "BWSSB", "cc_agencies": [], "department": "Sewerage Operations Division", "channel": "bwssb.gov.in / helpline 1916", "helpline": "1916", "reason": "Sewage overflow indicates a blocked or damaged sanitary sewer, which BWSSB Sewerage Operations must address."},
-    "open_manhole_sewer": {"primary_agency": "BWSSB", "cc_agencies": [], "department": "Sewerage Operations Division", "channel": "bwssb.gov.in / helpline 1916", "helpline": "1916", "reason": "An open manhole on a sanitary sewer line is BWSSB's responsibility as the sewer operator."},
-    "open_manhole_stormwater": {"primary_agency": "BBMP", "cc_agencies": [], "department": "Storm Water Drain (SWD) Division", "channel": "bbmp.gov.in / helpline 1533", "helpline": "1533", "reason": "An open manhole on a stormwater drain channel is managed by BBMP Storm Water Drain Division."},
-    "fallen_tree": {"primary_agency": "BBMP", "cc_agencies": [], "department": "Forest Cell / Horticulture Department", "channel": "bbmp.gov.in / helpline 1533", "helpline": "1533", "reason": "Fallen trees on public roads are cleared by BBMP Forest Cell / Horticulture Department."},
-    "fallen_tree_on_line": {"primary_agency": "BESCOM", "cc_agencies": ["BBMP"], "department": "Field Operations - Distribution", "channel": "bescom.org / helpline 1912", "helpline": "1912", "reason": "Tree on a live power line is a BESCOM electrical safety emergency; BBMP Forest Cell is CC'd for tree removal after the line is made safe."},
-    "road_dug_bwssb": {"primary_agency": "BWSSB", "cc_agencies": ["BBMP"], "department": "Water Distribution Division", "channel": "bwssb.gov.in / helpline 1916", "helpline": "1916", "reason": "Road dug for BWSSB pipe work must be restored by BWSSB; BBMP Roads is CC'd for road restoration oversight."},
-    "road_dug_bescom": {"primary_agency": "BESCOM", "cc_agencies": ["BBMP"], "department": "Field Operations - Distribution", "channel": "bescom.org / helpline 1912", "helpline": "1912", "reason": "Road dug for BESCOM cable work must be restored by BESCOM; BBMP Roads is CC'd for road restoration oversight."},
-    "traffic_signal": {"primary_agency": "Traffic Police", "cc_agencies": [], "department": "Traffic Signal Maintenance Cell", "channel": "TSCOP app / helpline 112", "helpline": "112", "reason": "Traffic signal maintenance and malfunction falls under Bengaluru City Traffic Police."},
-    "road_blocking": {"primary_agency": "Traffic Police", "cc_agencies": [], "department": "Traffic Control Room", "channel": "TSCOP app / helpline 112", "helpline": "112", "reason": "Vehicles or objects blocking roads are managed by Bengaluru Traffic Police Enforcement Division."},
+    "pothole": {"primary_agency": "City Corporation", "cc_agencies": [], "department": "Roads & Infrastructure", "channel": "corporation helpline 1533", "helpline": "1533", "reason": "Potholes on ward roads are repaired by the city corporation's roads division."},
+    "garbage": {"primary_agency": "City Corporation", "cc_agencies": [], "department": "Solid Waste Management", "channel": "corporation helpline 1533", "helpline": "1533", "reason": "Garbage on public roads is cleared by the city corporation's solid waste wing."},
+    "fallen_tree": {"primary_agency": "City Corporation", "cc_agencies": [], "department": "Forest Cell", "channel": "corporation helpline 1533", "helpline": "1533", "reason": "Fallen trees on public roads are cleared by the city corporation's forest cell."},
+    "traffic_signal": {"primary_agency": "Traffic Police", "cc_agencies": [], "department": "Traffic Signal Maintenance Cell", "channel": "helpline 112", "helpline": "112", "reason": "Traffic signal faults are handled by Bengaluru City Traffic Police."},
 }
+
+_PRIORITY = ["not_civic", "unclear", "roadcut_overdue", "roadcut_nopermit", "livewire", "telecom",
+             "streetlight", "drain_mixed", "stormdrain", "sewer", "cable",
+             "pothole", "garbage", "tree", "signal"]
 
 
 def _keyword_match(hint: str) -> str:
     hint_lower = hint.lower()
-    priority = ["not_civic", "unclear", "sparking", "transformer", "burst", "dug",
-                "blocking", "branch", "manhole", "sewage", "pothole", "damaged_road",
-                "garbage", "waste", "streetlight", "light", "wire", "power",
-                "leak", "pipe", "tree", "signal", "traffic"]
-    for key in priority:
+    for key in _PRIORITY:
         if key in hint_lower:
             return key
     return "pothole"
@@ -80,7 +81,9 @@ def _keyword_match(hint: str) -> str:
 
 def _mock_analyze(hint: str) -> dict:
     key = _keyword_match(hint)
-    return dict(_MOCK_ANALYZE.get(key, _MOCK_ANALYZE["pothole"]))
+    result = json.loads(json.dumps(_MOCK_ANALYZE[key]))
+    result["_mock_key"] = key
+    return result
 
 
 def _mock_route(issue_type: str) -> dict:
@@ -102,7 +105,7 @@ def vision_json(image, prompt: str, hint: str = "") -> dict:
         model = ModelInference(model_id=model_id, credentials=credentials, project_id=project_id)
         if image is not None:
             buf = io.BytesIO()
-            image.save(buf, format="JPEG")
+            image.convert("RGB").save(buf, format="JPEG")
             b64 = base64.b64encode(buf.getvalue()).decode()
             data_url = f"data:image/jpeg;base64,{b64}"
             messages = [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": data_url}}, {"type": "text", "text": prompt}]}]
@@ -159,3 +162,8 @@ def _extract_issue_type(prompt: str) -> str:
     if m:
         return m.group(1)
     return _keyword_match(prompt)
+
+
+def ai_enabled() -> bool:
+    """True only when mock mode is off and watsonx credentials are configured."""
+    return (not MOCK_MODE) and bool(os.environ.get("WATSONX_APIKEY")) and bool(os.environ.get("WATSONX_PROJECT_ID"))

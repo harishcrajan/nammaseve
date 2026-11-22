@@ -24,11 +24,16 @@ CREATE TABLE IF NOT EXISTS tickets (
     subject         TEXT NOT NULL DEFAULT '',
     body_en         TEXT NOT NULL DEFAULT '',
     body_kn         TEXT NOT NULL DEFAULT '',
-    status          TEXT NOT NULL DEFAULT 'Filed',
+    status          TEXT NOT NULL DEFAULT 'Draft ready',
     due_date        TEXT NOT NULL,
     escalation_level INTEGER NOT NULL DEFAULT 0,
     plus_one_count   INTEGER NOT NULL DEFAULT 0,
     escalation_msg   TEXT NOT NULL DEFAULT '',
+    family          TEXT NOT NULL DEFAULT 'OTHER',
+    sub_type        TEXT NOT NULL DEFAULT '',
+    verdict         TEXT NOT NULL DEFAULT '',
+    permit_status   TEXT NOT NULL DEFAULT '',
+    cc_agencies     TEXT NOT NULL DEFAULT '',
     created_at      TEXT NOT NULL,
     updated_at      TEXT NOT NULL
 );
@@ -36,9 +41,11 @@ CREATE TABLE IF NOT EXISTS tickets (
 
 _DUE_DAYS = {5: 1, 4: 2, 3: 5, 2: 7, 1: 7}
 
+_NEW_COLUMNS = {"family": "'OTHER'", "sub_type": "''", "verdict": "''", "permit_status": "''", "cc_agencies": "''"}
+
 
 def get_db() -> sqlite3.Connection:
-    con = sqlite3.connect(DB_PATH)
+    con = sqlite3.connect(os.environ.get("WF_DB_PATH", DB_PATH))
     con.row_factory = sqlite3.Row
     return con
 
@@ -47,6 +54,10 @@ def init_db() -> None:
     """Create tables if they do not exist."""
     with get_db() as con:
         con.executescript(_SCHEMA)
+        existing = {r["name"] for r in con.execute("PRAGMA table_info(tickets)")}
+        for col, default in _NEW_COLUMNS.items():
+            if col not in existing:
+                con.execute(f"ALTER TABLE tickets ADD COLUMN {col} TEXT NOT NULL DEFAULT {default}")
 
 
 def _next_ticket_id() -> str:
@@ -66,7 +77,7 @@ def insert_ticket(ticket: dict) -> str:
     tid = _next_ticket_id()
     severity = int(ticket.get("severity", 3))
     due_days = _DUE_DAYS.get(severity, 7)
-    due_date = (datetime.utcnow() + timedelta(days=due_days)).strftime("%Y-%m-%d")
+    due_date = ticket.get("due_date") or (datetime.utcnow() + timedelta(days=due_days)).strftime("%Y-%m-%d")
     now_iso = datetime.utcnow().isoformat()
 
     with get_db() as con:
@@ -76,8 +87,9 @@ def insert_ticket(ticket: dict) -> str:
                 primary_agency, department, channel, helpline, routing_reason,
                 subject, body_en, body_kn, status, due_date,
                 escalation_level, plus_one_count, escalation_msg,
+                family, sub_type, verdict, permit_status, cc_agencies,
                 created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'Filed',?,0,0,'',?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,'',?,?,?,?,?,?,?)""",
             (
                 tid,
                 ticket.get("locality", ""),
@@ -93,7 +105,13 @@ def insert_ticket(ticket: dict) -> str:
                 ticket.get("subject", ""),
                 ticket.get("body_en", ""),
                 ticket.get("body_kn", ""),
+                ticket.get("status", "Draft ready"),
                 due_date,
+                ticket.get("family", "OTHER"),
+                ticket.get("sub_type", ""),
+                ticket.get("verdict", ""),
+                ticket.get("permit_status", ""),
+                ticket.get("cc_agencies", ""),
                 now_iso,
                 now_iso,
             ),
@@ -149,3 +167,8 @@ def update_ticket(ticket_id: str, **kwargs) -> None:
 
 def mark_resolved(ticket_id: str) -> None:
     update_ticket(ticket_id, status="Resolved")
+
+
+def mark_sent(ticket_id: str, when: datetime | None = None) -> None:
+    """Record that the resident sent the complaint themselves."""
+    update_ticket(ticket_id, status=f"Sent by you on {(when or datetime.now()):%Y-%m-%d}")
