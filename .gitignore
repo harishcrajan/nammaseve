@@ -1,0 +1,16 @@
+# Ward Fixer
+.env
+ward_fixer.db
+*.db
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.DS_Store
+Thumbs.db

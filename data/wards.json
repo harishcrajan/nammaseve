@@ -1,0 +1,15 @@
+{
+  "_note": "Sample data – not official. Ward names and zones are illustrative only.",
+  "localities": [
+    {"locality": "Indiranagar", "ward": "Indiranagar Ward 81", "zone": "East Zone", "corporation": "BBMP"},
+    {"locality": "Koramangala", "ward": "Koramangala Ward 68", "zone": "South Zone", "corporation": "BBMP"},
+    {"locality": "HSR Layout", "ward": "HSR Layout Ward 174", "zone": "South Zone", "corporation": "BBMP"},
+    {"locality": "Whitefield", "ward": "Whitefield Ward 149", "zone": "East Zone", "corporation": "BBMP"},
+    {"locality": "Jayanagar", "ward": "Jayanagar Ward 55", "zone": "South Zone", "corporation": "BBMP"},
+    {"locality": "Malleshwaram", "ward": "Malleshwaram Ward 28", "zone": "West Zone", "corporation": "BBMP"},
+    {"locality": "Yelahanka", "ward": "Yelahanka Ward 3", "zone": "North Zone", "corporation": "BBMP"},
+    {"locality": "BTM Layout", "ward": "BTM Layout Ward 157", "zone": "South Zone", "corporation": "BBMP"},
+    {"locality": "Hebbal", "ward": "Hebbal Ward 16", "zone": "North Zone", "corporation": "BBMP"},
+    {"locality": "Electronic City", "ward": "Electronic City Ward 193", "zone": "South Zone", "corporation": "BBMP"}
+  ]
+}
